@@ -20,7 +20,7 @@ import {
 import type {
   GraphQLFieldConfigArgumentMap,
   GraphQLFieldConfigMap
-} from 'graphql';
+} from 'graphql/type/definition';
 
 /**
  * Returns a GraphQLFieldConfigArgumentMap appropriate to include on a field
@@ -57,13 +57,13 @@ export var connectionArgs: GraphQLFieldConfigArgumentMap = {
   ...backwardConnectionArgs,
 };
 
-type ConnectionConfig = {
+type ConnectionConfig<T> = {
   name?: ?string,
   nodeType: GraphQLObjectType,
   resolveNode?: ?Function,
   resolveCursor?: ?Function,
-  edgeFields?: ?(() => GraphQLFieldConfigMap) | ?GraphQLFieldConfigMap,
-  connectionFields?: ?(() => GraphQLFieldConfigMap) | ?GraphQLFieldConfigMap,
+  edgeFields?: ?(() => GraphQLFieldConfigMap<T>) | ?GraphQLFieldConfigMap<T>,
+  connectionFields?: ?(() => GraphQLFieldConfigMap<T>) | ?GraphQLFieldConfigMap<T>,
 }
 
 type GraphQLConnectionDefinitions = {
@@ -79,8 +79,8 @@ function resolveMaybeThunk<T>(thingOrThunk: T | () => T): T {
  * Returns a GraphQLObjectType for a connection with the given name,
  * and whose nodes are of the specified type.
  */
-export function connectionDefinitions(
-  config: ConnectionConfig
+export function connectionDefinitions<T>(
+  config: ConnectionConfig<T>
 ): GraphQLConnectionDefinitions {
   var {nodeType} = config;
   var name = config.name || nodeType.name;

@@ -18,7 +18,8 @@ import type {
   GraphQLFieldConfig,
   GraphQLObjectType,
   GraphQLResolveInfo
-} from 'graphql';
+  GraphQLTypeResolveFn,
+} from 'graphql/type/definition';
 
 import {
   base64,
@@ -27,11 +28,8 @@ import {
 
 type GraphQLNodeDefinitions = {
   nodeInterface: GraphQLInterfaceType,
-  nodeField: GraphQLFieldConfig
+  nodeField: GraphQLFieldConfig<*>
 }
-
-type typeResolverFn = (object: any) => ?GraphQLObjectType |
-                      (object: any) => ?Promise<GraphQLObjectType>;
 
 /**
  * Given a function to map from an ID to an underlying object, and a function
@@ -45,7 +43,7 @@ type typeResolverFn = (object: any) => ?GraphQLObjectType |
  */
 export function nodeDefinitions(
   idFetcher: ((id: string, context: any, info: GraphQLResolveInfo) => any),
-  typeResolver?: ?typeResolverFn
+  typeResolver?: GraphQLTypeResolveFn
 ): GraphQLNodeDefinitions {
   var nodeInterface = new GraphQLInterfaceType({
     name: 'Node',
@@ -56,7 +54,7 @@ export function nodeDefinitions(
         description: 'The id of the object.',
       },
     }),
-    resolveType: typeResolver
+    resolveType: typeResolver,
   });
 
   var nodeField = {
@@ -69,7 +67,13 @@ export function nodeDefinitions(
         description: 'The ID of an object'
       }
     },
-    resolve: (obj, {id}, context, info) => idFetcher(id, context, info),
+    resolve: (obj, {id}, context, info) => {
+      if (typeof id === 'string') {
+        return idFetcher(id, context, info);
+      } else {
+        throw Error('Invalid ID');
+      }
+    }
   };
 
   return {nodeInterface, nodeField};
@@ -107,17 +111,28 @@ export function fromGlobalId(globalId: string): ResolvedGlobalId {
  * by calling idFetcher on the object, or if not provided, by accessing the `id`
  * property on the object.
  */
+function defaultIdFetcher(object: mixed, context: mixed, info: GraphQLResolveInfo): string {
+  let id: mixed;
+  if (object != null && typeof object === 'object' && object.hasOwnProperty('id')) {
+    id = object.id;
+  }
+
+  if (typeof id === 'string') {
+    return id;
+  }
+  throw Error('No ID fetcher defined!');
+}
 export function globalIdField(
   typeName?: ?string,
   idFetcher?: (object: any, context: any, info: GraphQLResolveInfo) => string
-): GraphQLFieldConfig {
+): GraphQLFieldConfig<*> {
   return {
     name: 'id',
     description: 'The ID of an object',
     type: new GraphQLNonNull(GraphQLID),
     resolve: (obj, args, context, info) => toGlobalId(
       typeName || info.parentType.name,
-      idFetcher ? idFetcher(obj, context, info) : obj.id
+      idFetcher ? idFetcher(obj, context, info) : defaultIdFetcher(obj, context, info)
     )
   };
 }

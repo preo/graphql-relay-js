@@ -2,9 +2,14 @@
 .*/coverage/.*
 .*/scripts/.*
 .*/node_modules/flow-bin/.*
+.*/__tests__/.*
+.*/node_modules/graphql/.*
+.*/node_modules/graphql-relay/.*
 
 [include]
 
 [libs]
 
 [options]
+module.name_mapper='^graphql$' -> '<PROJECT_ROOT>/graphql/index'
+module.name_mapper='^graphql/\(.*\)$' -> '<PROJECT_ROOT>/graphql/\1'

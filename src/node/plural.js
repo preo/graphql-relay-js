@@ -18,7 +18,7 @@ import type {
   GraphQLInputType,
   GraphQLOutputType,
   GraphQLResolveInfo
-} from 'graphql';
+} from 'graphql/type/definition';
 
 type PluralIdentifyingRootFieldConfig = {
   argName: string,
@@ -31,8 +31,11 @@ type PluralIdentifyingRootFieldConfig = {
 
 export function pluralIdentifyingRootField(
   config: PluralIdentifyingRootFieldConfig
-): GraphQLFieldConfig {
+): GraphQLFieldConfig<*> {
   var inputArgs = {};
+  if (config.inputType instanceof GraphQLNonNull) {
+    throw Error('Cannot nest non-null!');
+  }
   inputArgs[config.argName] = {
     type: new GraphQLNonNull(
             new GraphQLList(
@@ -47,7 +50,10 @@ export function pluralIdentifyingRootField(
     type: new GraphQLList(config.outputType),
     args: inputArgs,
     resolve: (obj, args, context, info) => {
-      var inputs = args[config.argName];
+      const inputs = args[config.argName];
+      if (inputs == null || !(inputs instanceof Array)) {
+        throw Error('Invalid inputs!');
+      }
       return Promise.all(inputs.map(
         input => Promise.resolve(
           config.resolveSingleInput(input, context, info)
